@@ -2,36 +2,24 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs/promises');
 const crypto = require('crypto');
+const { emailVerify } = require('./Midwares/emailVerify');
+const { passwordVerify } = require('./Midwares/passwordVerify');
+const { tokenVerify } = require('./Midwares/tokenVerify');
+const { nameVerify } = require('./Midwares/nameVerify');
+const { ageVerify } = require('./Midwares/ageVerify');
+const { talkVerify } = require('./Midwares/talkVerify');
+const { watchedAtVerify } = require('./Midwares/watchedAtVerify');
+const { rateVerify } = require('./Midwares/rateVerify');
+const { addIdToJson } = require('./Midwares/addIdToJson');
 
 const app = express();
 app.use(bodyParser.json());
 
 const HTTP_OK_STATUS = 200;
+const HTTP_CREATED_STATUS = 201;
 const HTTP_NOT_FOUND_STATUS = 404;
-const HTTP_BAD_REQUEST_STATUS = 400;
 
 const PORT = '3000';
-
-function emailVerify(email) {
-  const validRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-  if (email === undefined) {
-    return undefined
-  }
-  if (email.match(validRegex)) {
-    return true;
-  }
-  return false;
-}
-
-function passwordVerify(password) {
-  if (password === undefined) {
-    return undefined;
-  }
-  if (password.length >= 6) {
-    return true
-  }
-  return false;
-}
 
 function generateToken() {
   return crypto.randomBytes(8).toString('hex');
@@ -40,7 +28,7 @@ function generateToken() {
 async function talkerReader() {
   try {
     const data = await fs.readFile('./talker.json', 'utf-8');
-    return JSON.parse(data)
+    return JSON.parse(data);
   } catch (err) {
     console.log(err.message);
   }
@@ -51,7 +39,7 @@ app.get('/', (_request, response) => {
 });
 
 app.get('/talker', async (_request, response) => {
-  const responseJson = await talkerReader()
+  const responseJson = await talkerReader();
   if (responseJson.lenght === 0) {
     return response.status(HTTP_OK_STATUS).json([]);
   }
@@ -60,38 +48,24 @@ app.get('/talker', async (_request, response) => {
 
 app.get('/talker/:id', async (request, response) => {
   const { id } = request.params;
-  const responseJson = await talkerReader()
+  const responseJson = await talkerReader();
   const talkerById = responseJson.find((talker) => talker.id === Number(id));
   if (talkerById === undefined) {
-    return response.status(HTTP_NOT_FOUND_STATUS).send({ message: "Pessoa palestrante não encontrada" });
+    return response.status(HTTP_NOT_FOUND_STATUS)
+      .send({ message: 'Pessoa palestrante não encontrada' });
   }
   return response.status(HTTP_OK_STATUS).json(talkerById);
 });
 
-app.post('/login', (request, response) => {
-  const { email, password } = request.body;
-  const emailStatus = emailVerify(email);
-  const passwordStatus = passwordVerify(password);
-  if (emailStatus === undefined) {
-    return response.status(HTTP_BAD_REQUEST_STATUS).json({ "message": "O campo \"email\" é obrigatório" });
-  }
-  if (emailStatus === false) {
-    return response.status(HTTP_BAD_REQUEST_STATUS).json({ "message": "O \"email\" deve ter o formato \"email@email.com\"" });
-  }
-  if (passwordStatus === undefined) {
-    return response.status(HTTP_BAD_REQUEST_STATUS).json({
-      "message": "O campo \"password\" é obrigatório"
-    });
-  }
-  if (passwordStatus === false) {
-    return response.status(HTTP_BAD_REQUEST_STATUS).json({
-      "message": "O \"password\" deve ter pelo menos 6 caracteres"
-    });
-  }
-  const generatedToken = generateToken()
+app.post('/talker',
+  tokenVerify, nameVerify, ageVerify,
+  talkVerify, watchedAtVerify,
+  rateVerify, addIdToJson, (_request, response) => response.status(HTTP_CREATED_STATUS));
+
+app.post('/login', emailVerify, passwordVerify, (_request, response) => {
+  const generatedToken = generateToken();
   return response.status(HTTP_OK_STATUS).json({ token: generatedToken });
 });
-
 
 app.listen(PORT, () => {
   console.log('Online');
