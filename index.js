@@ -11,6 +11,8 @@ const { talkVerify } = require('./Midwares/talkVerify');
 const { watchedAtVerify } = require('./Midwares/watchedAtVerify');
 const { rateVerify } = require('./Midwares/rateVerify');
 const { addIdToJson } = require('./Midwares/addIdToJson');
+const { modifyTalker } = require('./Midwares/modifyTalker');
+const { deleteTalker } = require('./Midwares/deleteTalker');
 
 const app = express();
 app.use(bodyParser.json());
@@ -61,6 +63,14 @@ app.post('/talker',
   tokenVerify, nameVerify, ageVerify,
   talkVerify, watchedAtVerify,
   rateVerify, addIdToJson, (_request, response) => response.status(HTTP_CREATED_STATUS));
+
+app.put('/talker/:id',
+  tokenVerify, nameVerify, ageVerify,
+  talkVerify, watchedAtVerify,
+  rateVerify, modifyTalker, (_request, response) => response.status(HTTP_OK_STATUS));
+
+app.delete('/talker/:id',
+  tokenVerify, deleteTalker, (_request, response) => response.status(HTTP_OK_STATUS));
 
 app.post('/login', emailVerify, passwordVerify, (_request, response) => {
   const generatedToken = generateToken();
